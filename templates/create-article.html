@@ -5,14 +5,14 @@
 {% endblock %}
 
 {% block body %}
-<div class="container">
+<div class="container nt-5">
     <h1>
         Add article
     </h1>
     <form method="post">
-        <input type="text" name="title" id="title" class="form-control"><br>
-        <textarea name="intro" id="intro" class="form-control"></textarea><br>
-        <textarea name="text" id="text" class="form-control"></textarea><br>
+        <input type="text" name="title" id="title" class="form-control" placeholder="Enter title"><br>
+        <textarea name="intro" id="intro" class="form-control"placeholder="Enter intro"></textarea><br>
+        <textarea name="text" id="text" class="form-control" placeholder="Enter article`s text"></textarea><br>
         <input type="submit" class="btn btn-success" value="Sent">
     </form>
 </div>

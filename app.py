@@ -1,4 +1,4 @@
-from flask import Flask,render_template,url_for
+from flask import Flask,render_template,url_for,request,redirect
 from flask_sqlalchemy import SQLAlchemy  #if cant import flask_sqlalchemy:
                                                                         # try configurate VENV again
                                                                         # make sure that U use right interpreter
@@ -29,12 +29,40 @@ def index():
 
 @app.route('/about')
 def about():
-    return render_template('about.html')\
+    return render_template('about.html')
 
 
-@app.route('/create-article')
-def add():
-    return render_template('create-article.html')
+@app.route('/posts')
+def posts():
+
+    articles = Articles.query.order_by(Articles.date.desc()).all()
+    return render_template("posts.html", articles = articles)
+
+@app.route('/posts/<int:id>')
+def posts_text(id):
+
+    article = Articles.query.get(id)
+    return render_template("post_text.html", article = article)
+
+
+@app.route('/create-article', methods=['POST','GET'])
+def create_article():
+    if request.method == "POST":
+        title = request.form['title']
+        intro = request.form['intro']
+        text = request.form['text']
+
+        article = Articles(title = title,
+                           intro = intro,
+                           text  = text)
+        try:
+            db.session.add(article)
+            db.session.commit()
+            return redirect('/posts')
+        except:
+            return "Cant add your article"
+    else:
+        return render_template("create-article.html")
 
 
 
@@ -43,4 +71,4 @@ def user(name, id):
     return "User  "+name+'--'+str(id)
 
 if __name__ == "__main__":
-    app.run(debug=True)  #dev errors expected
+    app.run(debug=True)  #dev errors expected with debug mode

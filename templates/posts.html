@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    Про нас сторніка
+{% endblock %}
+
+{% block body %}
+<div class="container nt-5">
+    <h1>
+        all article
+    </h1>
+        {% for el in articles %}
+            <div class="alert alert-info">
+                <h2>{{ el.title }}</h2>
+                <p>{{ el.intro }}</p>
+                <p><b>Date: {{el.date.date()}}</b></p>
+                <a href="/posts/{{ el.id }}" class="btn btn-warning" >Details</a>
+            </div>
+        {% endfor %}
+</div>
+{% endblock %}
