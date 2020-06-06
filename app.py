@@ -45,6 +45,18 @@ def posts_text(id):
     return render_template("post_text.html", article = article)
 
 
+@app.route('/posts/<int:id>/del')
+def posts_delete(id):
+
+    article = Articles.query.get_or_404(id)
+    try:
+        db.session.delete(article)
+        db.session.commit()
+        return redirect('/posts')
+    except:
+        return 'Cant delete or 404'
+
+
 @app.route('/create-article', methods=['POST','GET'])
 def create_article():
     if request.method == "POST":
@@ -64,7 +76,26 @@ def create_article():
     else:
         return render_template("create-article.html")
 
+@app.route('/posts/<int:id>/update', methods=['POST','GET'])
+def post_update(id):
+    article = Articles.query.get(id)
+    if request.method == "POST":
+        article.title = request.form['title']
+        article.intro = request.form['intro']
+        article.text = request.form['text']
 
+        # article = Articles(title = title,
+        #                    intro = intro,
+        #                    text  = text)
+        try:
+            #db.session.add(article)
+            db.session.commit()
+            return redirect('/posts')
+        except:
+            return "Cant update"
+    else:
+
+        return render_template("post_update.html",article=article)
 
 @app.route('/user/<string:name>/<int:id>')
 def user(name, id):
