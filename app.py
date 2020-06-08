@@ -2,7 +2,7 @@ from flask import Flask,render_template,url_for,request,redirect,flash
 from flask_sqlalchemy import SQLAlchemy  #if cant import flask_sqlalchemy:
                                                                         # try configurate VENV again
                                                                         # make sure that U use right interpreter
-from flask_login import UserMixin,LoginManager,login_user,logout_user
+from flask_login import UserMixin,LoginManager,login_user,logout_user,login_required
 from werkzeug.security import check_password_hash,generate_password_hash
 from datetime import datetime
 
@@ -32,6 +32,11 @@ class User(db.Model,UserMixin):
 
 db.create_all()
 
+
+@app.route('/test')
+def test():
+    return render_template('test.html')
+
 @manager.user_loader
 def load_user(user_id):#id?
     return User.query.get(user_id) #get_or_404?
@@ -44,10 +49,6 @@ def index():
 
 @app.route('/about')
 #@login_required
-#
-#
-#
-#
 def about():
     return render_template('about.html')
 
@@ -124,6 +125,7 @@ def user(name, id):
 
 
 @app.route('/login', methods=['GET', 'POST'])
+@login_required
 def login_page():
     login = request.form.get('login')
     password = request.form.get('password')
@@ -140,9 +142,11 @@ def login_page():
         else:
             flash('Login or password is not correct')
     else:
+        pass
         flash('Please fill login and password fields')
 
     return render_template('login.html')
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     login = request.form.get('login')
@@ -170,6 +174,12 @@ def logout():
     logout_user()
     return redirect(url_for('hello_world'))
 
+
+@app.route('/None')
+#@login_required
+def none():
+    return render_template('index.html')
+
 @app.after_request
 def redirect_to_signin(response):
     if response.status_code == 401:
@@ -179,4 +189,5 @@ def redirect_to_signin(response):
 
 
 if __name__ == "__main__":
+
     app.run(debug=True)  #dev errors expected with debug mode
