@@ -9,4 +9,7 @@
  pip install flask-sqlalchemy
  after db init run db.create_all()  #or run db.create_all() in code
  pip freeze requirements.txt
+
+ Follow link to join service:
+ https://article-adjustment-service.herokuapp.com/
  ```
