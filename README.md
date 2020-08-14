@@ -7,7 +7,7 @@
  pip install flask
  pip install sqlalchemy
  pip install flask-sqlalchemy
- after db init run db.create_all()  #or run db.create_all() in code
+ after db init run db.create_all()
  pip freeze requirements.txt
 
  Follow link to join service:
