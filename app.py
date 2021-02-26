@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy  #if cant import flask_sqlalchemy:
 from flask_login import UserMixin,LoginManager,login_user,logout_user,login_required
 from werkzeug.security import check_password_hash,generate_password_hash
 from datetime import datetime
-
+from sqlalchemy import update
 app = Flask(__name__)
 app.secret_key='some secret salt'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///articles_adjustment.db'
@@ -35,6 +35,11 @@ class User(db.Model,UserMixin):
 
 db.create_all()
 
+def makeLike(postId):
+    x = db.session.query(Articles).filter(Articles.id==postId)
+    update({Articles.likes:Articles.likes+1}, synchronize_session=False)
+
+
 
 @app.route('/test')
 def test():
@@ -60,13 +65,13 @@ def about():
 def posts():
 
     articles = Articles.query.order_by(Articles.date.desc()).all()
-    return render_template("posts.html", articles = articles)
+    return render_template("posts.html", articles=articles)
 
 @app.route('/posts/<int:id>')
 def posts_text(id):
 
     article = Articles.query.get(id)
-    return render_template("post_text.html", article = article)
+    return render_template("post_text.html", article=article)
 
 
 @app.route('/posts/<int:id>/del')
