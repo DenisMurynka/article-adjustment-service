@@ -7,7 +7,7 @@
 {% block body %}
 <div class="container nt-5">
     <h1>
-        all article
+        Articles
     </h1>
     {% if articles|length>0%}
         {% for el in articles %}
@@ -16,6 +16,9 @@
                 <p>{{ el.intro }}</p>
                 <p><b>Date: {{el.date.date()}}</b></p>
                 <a href="/posts/{{ el.id }}" class="btn btn-warning" >Details</a>
+                <a class="btn btn-success" >Like</a>
+                <a class="btn btn-danger" >Dislike</a>
+
             </div>
         {% endfor %}
     {% else%}
