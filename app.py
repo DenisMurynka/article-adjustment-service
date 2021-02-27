@@ -5,8 +5,8 @@ from flask_sqlalchemy import SQLAlchemy  #if cant import flask_sqlalchemy:
 from flask_login import UserMixin,LoginManager,login_user,logout_user,login_required
 from werkzeug.security import check_password_hash,generate_password_hash
 from datetime import datetime
-from sqlalchemy import update
-import cgi, cgitb
+
+
 app = Flask(__name__)
 app.secret_key='some secret salt'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///articles_adjustment.db'
@@ -24,6 +24,8 @@ class Articles(db.Model):
         dislikes = db.Column(db.Integer)
         text = db.Column(db.Text,nullable = False)
         date = db.Column(db.DateTime, default = datetime.utcnow)
+        user_id = db.Column(db.Integer, db.ForeignKey('user.id'),nullable=False)
+
 
 
         def __repr__(self):
@@ -35,7 +37,7 @@ class User(db.Model,UserMixin):
     password = db.Column(db.String(255),nullable=False)
 
 
-db.create_all()
+
 
 @app.route('/like/<int:postId>')
 def like(postId):
@@ -54,9 +56,7 @@ def dislike(postId):
    db.session.commit()
    return redirect("/posts")
 
-@app.route('/test')
-def test():
-    return render_template('test.html')
+
 
 @manager.user_loader
 def load_user(user_id):#id?
@@ -100,8 +100,9 @@ def posts_delete(id):
 
 
 @app.route('/create-article', methods=['POST','GET'])
+@login_required
 def create_article():
-    if request.method == "POST":
+    if request.method == "POST" and user:
         title = request.form['title']
         intro = request.form['intro']
         text = request.form['text']
@@ -146,7 +147,6 @@ def user(name, id):
 
 
 @app.route('/login', methods=['GET', 'POST'])
-@login_required
 def login_page():
     login = request.form.get('login')
     password = request.form.get('password')
@@ -163,7 +163,6 @@ def login_page():
         else:
             flash('Login or password is not correct')
     else:
-        pass
         flash('Please fill login and password fields')
 
     return render_template('login.html')
@@ -181,7 +180,7 @@ def register():
             flash('Passwords are not equal!')
         else:
             hash_pwd = generate_password_hash(password)
-            new_user = User(login = login, password = hash_pwd)
+            new_user = User(login=login, password=hash_pwd)
             db.session.add(new_user)
             db.session.commit()
 
@@ -193,7 +192,7 @@ def register():
 #@login_required
 def logout():
     logout_user()
-    return redirect(url_for('hello_world'))
+    return redirect(url_for('index'))
 
 
 @app.route('/None')
@@ -210,5 +209,5 @@ def redirect_to_signin(response):
 
 
 if __name__ == "__main__":
-
+    #db.create_all()
     app.run(debug=True)  #dev errors expected with debug mode
