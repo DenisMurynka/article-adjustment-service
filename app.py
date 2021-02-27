@@ -1,11 +1,12 @@
 from flask import Flask,render_template,url_for,request,redirect,flash
 from flask_sqlalchemy import SQLAlchemy  #if cant import flask_sqlalchemy:
                                                                         # try configurate VENV again
-                                                                        # make sure that U use right interpreter
+                                                  # make sure that U use right interpreter
 from flask_login import UserMixin,LoginManager,login_user,logout_user,login_required
 from werkzeug.security import check_password_hash,generate_password_hash
 from datetime import datetime
 from sqlalchemy import update
+import cgi, cgitb
 app = Flask(__name__)
 app.secret_key='some secret salt'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///articles_adjustment.db'
@@ -27,6 +28,7 @@ class Articles(db.Model):
 
         def __repr__(self):
             return '<Articles %r>' % self.id
+
 class User(db.Model,UserMixin):
     id = db.Column(db.Integer,primary_key=True)
     login = db.Column(db.String(32),nullable=False,unique=False)
@@ -35,11 +37,22 @@ class User(db.Model,UserMixin):
 
 db.create_all()
 
-def makeLike(postId):
-    x = db.session.query(Articles).filter(Articles.id==postId)
-    update({Articles.likes:Articles.likes+1}, synchronize_session=False)
+@app.route('/like/<int:postId>')
+def like(postId):
 
+   article = Articles.query.filter_by(id=postId).first()
+   article.likes += 1
+   db.session.commit()
+   return redirect("/posts")
 
+@app.route('/dislike/<int:postId>')
+def dislike(postId):
+
+   article = Articles.query.filter_by(id=postId).first()
+   article.likes -= 1
+   article.dislikes += 1
+   db.session.commit()
+   return redirect("/posts")
 
 @app.route('/test')
 def test():
@@ -63,7 +76,7 @@ def about():
 
 @app.route('/posts')
 def posts():
-
+    #print('lolllll')
     articles = Articles.query.order_by(Articles.date.desc()).all()
     return render_template("posts.html", articles=articles)
 
