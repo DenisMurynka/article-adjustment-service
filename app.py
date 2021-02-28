@@ -1,18 +1,25 @@
-from flask import Flask,render_template,url_for,request,redirect,flash
-from flask_sqlalchemy import SQLAlchemy  #if cant import flask_sqlalchemy:
-                                                                        # try configurate VENV again
-                                                  # make sure that U use right interpreter
+from flask import Flask,render_template,url_for,request,redirect,flash,jsonify
+from flask_sqlalchemy import SQLAlchemy
+
 from flask_login import UserMixin,LoginManager,login_user,logout_user,login_required
 from werkzeug.security import check_password_hash,generate_password_hash
-from datetime import datetime
-
-
+from datetime import datetime as dt,timedelta
+import jwt  #specified version== 1.7.1
+from functools import wraps
+import sys
 app = Flask(__name__)
-app.secret_key='some secret salt'
+#app.secret_key='some secret salt'
+app.config['SECRET_KEY'] = 'some secret salt'
+app.config['JWT_LOCATION'] = ['COOKIES']
+app.config['JWT_COOKIE_SECURE'] = False
+app.config['JWT_REFRESH_COOKIE_PATH'] = '/token/refresh'
+app.config['JWT_ACCESS_COOKIE_PATH'] = '/api/'
+app.config['JWT_COOKIE_CSRF_PROTECT'] = True
+
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///articles_adjustment.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  #if you see notice 'SQLALCHEMY_TRACK_MODIFICATIONS'--> add this config,it is not important thought
 db = SQLAlchemy(app)
-manager=LoginManager(app)
+manager = LoginManager(app)
 
 
 
@@ -23,7 +30,7 @@ class Articles(db.Model):
         likes = db.Column(db.Integer)
         dislikes = db.Column(db.Integer)
         text = db.Column(db.Text,nullable = False)
-        date = db.Column(db.DateTime, default = datetime.utcnow)
+        date = db.Column(db.DateTime, default = dt.utcnow)
         user_id = db.Column(db.Integer, db.ForeignKey('user.id'),nullable=False)
 
 
@@ -38,6 +45,21 @@ class User(db.Model,UserMixin):
 
 
 
+def token_required(f):
+    @wraps(f)
+    def decorated(*args,**kwargs):
+        #tmp=(sys.argv[1])
+        #print(tmp['token'].decode("utf-8") )
+        #token=tmp['token'].decode("utf-8")
+        token=((sys.argv[1])['token']).decode("utf-8")
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 403
+        try:
+            data=jwt.decode(token,app.config['SECRET_KEY'])
+        except:
+            return jsonify({'message': 'Token is invalid!'}), 401
+        return f(*args,**kwargs)
+    return decorated
 
 @app.route('/like/<int:postId>')
 def like(postId):
@@ -75,6 +97,7 @@ def about():
 
 
 @app.route('/posts')
+@token_required
 def posts():
     #print('lolllll')
     articles = Articles.query.order_by(Articles.date.desc()).all()
@@ -151,20 +174,30 @@ def login_page():
     login = request.form.get('login')
     password = request.form.get('password')
 
+    #auth = request.authorization
+
+
     if login and password:
         user = User.query.filter_by(login=login).first()
 
-        if user and check_password_hash(user.password, password):
+        if  user and check_password_hash(user.password, password):
+            token = jwt.encode({'public_id': user.id, 'exp': dt.utcnow() + timedelta(seconds=10)}, app.config['SECRET_KEY'])
+            sys.argv.append({'token': token})
+
+
+            #token = jwt.encode({'public_id':user.id,'exp':datetime.utcnow() + datetime.timedelta(minutes=30)},app.secret_key)
             login_user(user)
 
             next_page = request.args.get('next')
 
             return redirect(next_page)
+            #return jsonify({'token': token.decode('UTF-8')})
         else:
             flash('Login or password is not correct')
     else:
         flash('Please fill login and password fields')
 
+    #render_template('login.html')
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
