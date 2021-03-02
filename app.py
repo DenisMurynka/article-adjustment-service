@@ -136,17 +136,23 @@ def index():
 @app.route('/about')
 @login_required
 def about():
-    visits()
-    return render_template('about.html')
+    try:
+        visits()
+        return render_template('about.html')
+    except IndexError:
+        return render_template("login.html")
 
 
 @app.route('/posts')
 @flask_login.login_required
 def posts():
-    visits()
-    articles = Articles.query.order_by(Articles.date.desc()).all()
-    return render_template("posts.html", articles=articles)
 
+    try:
+        visits()
+        articles = Articles.query.order_by(Articles.date.desc()).all()
+        return render_template("posts.html", articles=articles)
+    except:
+        return render_template("login.html")
 @app.route('/posts/<int:id>')
 def posts_text(id):
     visits()
@@ -173,26 +179,29 @@ def posts_delete(id):
 @token_required
 @login_required
 def create_article():
-    visits()
+    try:
+        visits()
 
-    if request.method == "POST" and user:
-        title = request.form['title']
-        intro = request.form['intro']
-        text = request.form['text']
-        data = jwt.decode((sys.argv[1])['token'], app.config['SECRET_KEY'])
+        if request.method == "POST" and user:
+            title = request.form['title']
+            intro = request.form['intro']
+            text = request.form['text']
+            data = jwt.decode((sys.argv[1])['token'], app.config['SECRET_KEY'])
 
-        article = Articles(title=title,
-                           intro=intro,
-                           text=text,
-                           user_id=data['public_id'])
-        try:
-            db.session.add(article)
-            db.session.commit()
-            return redirect('/posts')
-        except:
-            return "Cant add your article"
-    else:
-        return render_template("create-article.html")
+            article = Articles(title=title,
+                               intro=intro,
+                               text=text,
+                               user_id=data['public_id'])
+            try:
+                db.session.add(article)
+                db.session.commit()
+                return redirect('/posts')
+            except:
+                return "Cant add your article"
+        else:
+            return render_template("create-article.html")
+    except:
+        return render_template("login.html")
 
 @app.route('/posts/<int:id>/update', methods=['POST','GET'])
 @login_required
@@ -249,8 +258,6 @@ def login_page():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-
-    visits()
 
     login = request.form.get('login')
     password = request.form.get('password')
