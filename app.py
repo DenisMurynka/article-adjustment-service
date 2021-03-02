@@ -125,13 +125,15 @@ def dislike(postId):
    return redirect("/posts")
 
 
-@app.route('/')
-@app.route('/home')
+@app.route('/',methods=['POST','GET'])
+@app.route('/home',methods=['POST','GET'])
 @login_required
 def index():
-    visits()
-    return render_template('index.html')
-
+    try:
+        visits()
+        return render_template('index.html')
+    except:
+        return redirect(url_for('login_page'))
 
 @app.route('/about')
 @login_required
@@ -176,10 +178,9 @@ def posts_delete(id):
 
 
 @app.route('/create-article', methods=['POST','GET'])
-@token_required
 @login_required
 def create_article():
-    try:
+
         visits()
 
         if request.method == "POST" and user:
@@ -200,8 +201,7 @@ def create_article():
                 return "Cant add your article"
         else:
             return render_template("create-article.html")
-    except:
-        return render_template("login.html")
+
 
 @app.route('/posts/<int:id>/update', methods=['POST','GET'])
 @login_required
@@ -238,7 +238,7 @@ def login_page():
     if login and password:
         user = User.query.filter_by(login=login).first()
         if  user and check_password_hash(user.password, password):
-            token = jwt.encode({'public_id': user.id, 'exp': dt.utcnow() + timedelta(minutes=10)}, app.config['SECRET_KEY'])
+            token = jwt.encode({'public_id': user.id, 'exp': dt.utcnow() + timedelta(seconds=15)}, app.config['SECRET_KEY'])
             sys.argv.append({'token': token})
 
             login_user(user)
