@@ -1,12 +1,9 @@
 from flask import Flask,render_template,url_for,request,redirect,flash,jsonify,session
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import  and_
-import json
-import  sqlalchemy
-import sqlite3
 import flask_login
 from flask_login import UserMixin,LoginManager,login_user,logout_user,login_required
 from werkzeug.security import check_password_hash,generate_password_hash
+
 from datetime import datetime as dt,timedelta
 import jwt  #specified version== 1.7.1
 from functools import wraps
@@ -14,7 +11,6 @@ import sys   #cant use COKIES for handling token  ,because of cant import flask_
 
 app = Flask(__name__)
 app.secret_key='some secret salt'
-#app.config['SECRET_KEY'] = 'some secret salt'
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -22,7 +18,7 @@ login_manager.init_app(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///articles_adjustment.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  #if you see notice 'SQLALCHEMY_TRACK_MODIFICATIONS'--> add this config,it is not important thought
 db = SQLAlchemy(app)
-#manager = LoginManager(app)
+
 
 
 class Articles(db.Model):
@@ -55,7 +51,6 @@ class ActionEvent(db.Model):
 
 
 def visits():
-
     data = jwt.decode((sys.argv[1])['token'], app.config['SECRET_KEY'])
     user = User.query.filter_by(id=data['public_id']).first()
     user.lastVisit = dt.now()
@@ -63,15 +58,11 @@ def visits():
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(user_id) #get_or_404?
+    return User.query.get(user_id)
 
 def token_required(f):
     @wraps(f)
     def decorated(*args,**kwargs):
-       # tmp=(sys.argv[0])
-       # print(tmp['token'].decode("utf-8") )
-        print(sys.argv)
-       # token=tmp['token'].decode("utf-8")
 
         token=((sys.argv[1])['token']).decode("utf-8")
         if not token:
@@ -86,6 +77,7 @@ def token_required(f):
 
 
 @app.route('/analitics')# http://127.0.0.1:5000/analitics?dateFrom=2019-10-01&dateTo=2022-01-01
+@login_required
 def analytics_statist():
     visits()
 
@@ -98,6 +90,7 @@ def analytics_statist():
 
 
 @app.route('/like/<int:postId>')
+@login_required
 def like(postId):
    visits()
 
@@ -115,6 +108,7 @@ def like(postId):
    return redirect("/posts")
 
 @app.route('/dislike/<int:postId>')
+@login_required
 def dislike(postId):
    visits()
    article = Articles.query.filter_by(id=postId).first()
@@ -133,6 +127,7 @@ def dislike(postId):
 
 @app.route('/')
 @app.route('/home')
+@login_required
 def index():
     visits()
     return render_template('index.html')
@@ -161,6 +156,7 @@ def posts_text(id):
 
 
 @app.route('/posts/<int:id>/del')
+@login_required
 def posts_delete(id):
     visits()
 
@@ -175,6 +171,7 @@ def posts_delete(id):
 
 @app.route('/create-article', methods=['POST','GET'])
 @token_required
+@login_required
 def create_article():
     visits()
 
@@ -198,6 +195,7 @@ def create_article():
         return render_template("create-article.html")
 
 @app.route('/posts/<int:id>/update', methods=['POST','GET'])
+@login_required
 def post_update(id):
     visits()
 
@@ -217,6 +215,7 @@ def post_update(id):
         return render_template("post_update.html",article=article)
 
 @app.route('/user/<string:name>/<int:id>')
+@login_required
 def user(name, id):
     visits()
     return "User  "+name+'--'+str(id)
@@ -273,17 +272,14 @@ def register():
     return render_template('register.html')
 
 @app.route('/logout', methods=['GET', 'POST'])
-#@login_required
+@login_required
 def logout():
     visits()
     logout_user()
     return redirect(url_for('index'))
 
 
-@app.route('/None')
-#@login_required
-def none():
-    return render_template('index.html')
+
 
 @app.after_request
 def redirect_to_signin(response):
@@ -294,5 +290,7 @@ def redirect_to_signin(response):
 
 
 if __name__ == "__main__":
-    #db.create_all()
-    app.run(debug=True) #dev errors expected with debug mode
+
+
+    app.run(debug=True)
+
