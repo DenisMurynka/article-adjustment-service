@@ -1,4 +1,4 @@
-from flask import Flask,render_template,url_for,request,redirect,flash,jsonify
+from flask import Flask,render_template,url_for,request,redirect,flash,jsonify,session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import  and_
 import json
@@ -42,6 +42,9 @@ class User(db.Model,UserMixin):
     id = db.Column(db.Integer,primary_key=True)
     login = db.Column(db.String(32),nullable=False,unique=False)
     password = db.Column(db.String(255),nullable=False)
+    lastSeen = db.Column(db.DateTime)
+    lastVisit = db.Column(db.DateTime) #try to migrate to ActionEvent
+
 
 class ActionEvent(db.Model):
     id= db.Column(db.Integer, primary_key=True)
@@ -49,6 +52,14 @@ class ActionEvent(db.Model):
     article_id = db.Column(db.Integer, db.ForeignKey('articles.id'), nullable=False)
     action = db.Column(db.String(32), nullable=False)
     date = db.Column(db.DateTime, default=dt.utcnow)
+
+
+def visits():
+
+    data = jwt.decode((sys.argv[1])['token'], app.config['SECRET_KEY'])
+    user = User.query.filter_by(id=data['public_id']).first()
+    user.lastVisit = dt.now()
+    db.session.commit()
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -66,44 +77,46 @@ def token_required(f):
         if not token:
             return jsonify({'message': 'Token is missing!'}), 403
         try:
-            data=jwt.decode(token,app.config['SECRET_KEY'])
+            jwt.decode(token,app.config['SECRET_KEY'])
         except:
             return jsonify({'message': 'Token is invalid!'}), 401
         return f(*args,**kwargs)
     return decorated
 
-def parse_date(date):
-    return str(date).split(' ', 1)[0]
+
 
 @app.route('/analitics')# http://127.0.0.1:5000/analitics?dateFrom=2019-10-01&dateTo=2022-01-01
 def analytics_statist():
+    visits()
 
     dateFrom = request.args.get('dateFrom')
-    #print(dateFrom)
     dateTo = request.args.get('dateTo')
-    #print(dateTo)
     result = db.session.execute("SELECT * from articles as A WHERE A.date >= :val and A.date <= :val2", {'val': dateFrom, 'val2': dateTo})
+
 
     return jsonify({'result': [dict(row) for row in result]})
 
 
 @app.route('/like/<int:postId>')
 def like(postId):
-   article = Articles.query.filter_by(id=postId).first()
-   data=jwt.decode((sys.argv[1])['token'],app.config['SECRET_KEY'])
+   visits()
 
-   actionEvent = ActionEvent(user_id=data['public_id'],
+   article = Articles.query.filter_by(id=postId).first()
+   data = jwt.decode((sys.argv[1])['token'],app.config['SECRET_KEY'])
+
+   actionEvent_like = ActionEvent(user_id=data['public_id'],
                              article_id=article.id,
                              action='like')
-   article.likes += 1
 
-   db.session.add(actionEvent)
+   article.likes += 1
+   db.session.commit()
+   db.session.add(actionEvent_like)
    db.session.commit()
    return redirect("/posts")
 
 @app.route('/dislike/<int:postId>')
 def dislike(postId):
-
+   visits()
    article = Articles.query.filter_by(id=postId).first()
    data = jwt.decode((sys.argv[1])['token'], app.config['SECRET_KEY'])
 
@@ -118,29 +131,30 @@ def dislike(postId):
    return redirect("/posts")
 
 
-
-
-
 @app.route('/')
 @app.route('/home')
 def index():
+    visits()
     return render_template('index.html')
 
 
 @app.route('/about')
 @login_required
 def about():
+    visits()
     return render_template('about.html')
 
 
 @app.route('/posts')
 @flask_login.login_required
 def posts():
+    visits()
     articles = Articles.query.order_by(Articles.date.desc()).all()
     return render_template("posts.html", articles=articles)
 
 @app.route('/posts/<int:id>')
 def posts_text(id):
+    visits()
 
     article = Articles.query.get(id)
     return render_template("post_text.html", article=article)
@@ -148,6 +162,7 @@ def posts_text(id):
 
 @app.route('/posts/<int:id>/del')
 def posts_delete(id):
+    visits()
 
     article = Articles.query.get_or_404(id)
     try:
@@ -161,14 +176,13 @@ def posts_delete(id):
 @app.route('/create-article', methods=['POST','GET'])
 @token_required
 def create_article():
+    visits()
 
     if request.method == "POST" and user:
         title = request.form['title']
         intro = request.form['intro']
         text = request.form['text']
         data = jwt.decode((sys.argv[1])['token'], app.config['SECRET_KEY'])
-        #print('data: ' + str(data))
-
 
         article = Articles(title=title,
                            intro=intro,
@@ -185,6 +199,8 @@ def create_article():
 
 @app.route('/posts/<int:id>/update', methods=['POST','GET'])
 def post_update(id):
+    visits()
+
     article = Articles.query.get(id)
     if request.method == "POST":
         article.title = request.form['title']
@@ -192,7 +208,6 @@ def post_update(id):
         article.text = request.form['text']
 
         try:
-            #db.session.add(article)
             db.session.commit()
             return redirect('/posts')
         except:
@@ -203,43 +218,41 @@ def post_update(id):
 
 @app.route('/user/<string:name>/<int:id>')
 def user(name, id):
+    visits()
     return "User  "+name+'--'+str(id)
-
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_page():
+
     login = request.form.get('login')
     password = request.form.get('password')
 
-    #auth = request.authorization
-
-
     if login and password:
         user = User.query.filter_by(login=login).first()
-
         if  user and check_password_hash(user.password, password):
             token = jwt.encode({'public_id': user.id, 'exp': dt.utcnow() + timedelta(minutes=10)}, app.config['SECRET_KEY'])
             sys.argv.append({'token': token})
-            print(token)
 
-            #token = jwt.encode({'public_id':user.id,'exp':datetime.utcnow() + datetime.timedelta(minutes=30)},app.secret_key)
             login_user(user)
-
+            visits()
             #next_page = request.args.get('next')
+            user.lastSeen = dt.now()
 
+            db.session.commit()
             return redirect(url_for('posts'))
-            #return jsonify({'token': token.decode('UTF-8')})
+
         else:
             flash('Login or password is not correct')
     else:
         flash('Please fill login and password fields')
 
-    #render_template('login.html')
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+
+    visits()
+
     login = request.form.get('login')
     password = request.form.get('password')
     password2 = request.form.get('password2')
@@ -262,6 +275,7 @@ def register():
 @app.route('/logout', methods=['GET', 'POST'])
 #@login_required
 def logout():
+    visits()
     logout_user()
     return redirect(url_for('index'))
 
@@ -281,4 +295,4 @@ def redirect_to_signin(response):
 
 if __name__ == "__main__":
     #db.create_all()
-    app.run(debug=True)  #dev errors expected with debug mode
+    app.run(debug=True) #dev errors expected with debug mode
